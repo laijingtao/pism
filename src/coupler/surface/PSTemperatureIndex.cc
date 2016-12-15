@@ -81,9 +81,12 @@ TemperatureIndex::TemperatureIndex(IceGrid::ConstPtr g)
   m_base_ddf.refreezeFrac = m_config->get_double("surface.pdd.refreeze");
   m_base_pddThresholdTemp = m_config->get_double("surface.pdd.positive_threshold_temp");
   m_base_pddStdDev        = m_config->get_double("surface.pdd.std_dev");
-  m_sd_use_param          = m_config->get_boolean("surface.pdd.std_dev_use_param");
-  m_sd_param_a            = m_config->get_double("surface.pdd.std_dev_param_a");
-  m_sd_param_b            = m_config->get_double("surface.pdd.std_dev_param_b");
+  m_sd_method             = m_config->get_string("surface.pdd.std_dev_method");
+  m_sd_seguinot_param_a   = m_config->get_double("surface.pdd.std_dev_seguinot_param_a");
+  m_sd_seguinot_param_b   = m_config->get_double("surface.pdd.std_dev_seguinot_param_b");
+  m_sd_wake_param_a       = m_config->get_double("surface.pdd.std_dev_wake_param_a");
+  m_sd_wake_param_b       = m_config->get_double("surface.pdd.std_dev_wake_param_b");
+  m_sd_wake_param_c       = m_config->get_double("surface.pdd.std_dev_wake_param_c");
 
 
   m_randomized = options::Bool("-pdd_rand",
@@ -416,9 +419,19 @@ void TemperatureIndex::update_impl(double my_t, double my_dt) {
       }
 
       // apply standard deviation param over ice if in use
-      if (m_sd_use_param && mask.icy(i,j)) {
+      if (m_sd_method == "linear" && mask.icy(i,j)) {
         for (int k = 0; k < Nseries; ++k) {
-          S[k] = m_sd_param_a * (T[k] - 273.15) + m_sd_param_b;
+          S[k] =  m_sd_seguinot_param_a + m_sd_seguinot_param_b * (T[k] - 273.15);
+          if (S[k] < 0.0) {
+            S[k] = 0.0 ;
+          }
+        }
+        m_air_temp_sd(i, j) = S[0]; // ensure correct SD reporting
+      } else if (m_sd_method == "quadratic" && mask.icy(i,j)) {
+        for (int k = 0; k < Nseries; ++k) {
+          S[k] =  m_sd_wake_param_a
+            + m_sd_wake_param_b * (T[k] - 273.15)
+            + m_sd_wake_param_c * pow(T[k] - 273.15, 2.0) ;
           if (S[k] < 0.0) {
             S[k] = 0.0 ;
           }

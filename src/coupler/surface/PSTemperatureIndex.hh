@@ -109,9 +109,12 @@ protected:
   IceModelVec2S m_cumulative_runoff;
 
   bool m_randomized, m_randomized_repeatable, m_use_fausto_params;
-  bool m_sd_use_param, m_sd_file_set;
+  bool m_sd_file_set;
+  std::string m_sd_method;
   int m_sd_period, m_sd_period_years;
-  double m_sd_ref_time, m_sd_param_a, m_sd_param_b;
+  double m_sd_ref_time,
+    m_sd_seguinot_param_a, m_sd_seguinot_param_b,
+    m_sd_wake_param_a, m_sd_wake_param_b, m_sd_wake_param_c;
 };
 
 /*! @brief Surface accumulation rate. */
