@@ -1356,19 +1356,36 @@ netcdf pism_config {
     pism_config:surface.pdd.std_dev_lapse_lat_rate_type = "scalar";
     pism_config:surface.pdd.std_dev_lapse_lat_rate_units = "Kelvin / degree_north";
 
-    pism_config:surface.pdd.std_dev_param_a = -0.15;
-    pism_config:surface.pdd.std_dev_param_a_doc = "Parameter a in Sigma = a*T + b, with T in degrees C. Used only if surface.pdd.std_dev_use_param is set to yes.";
-    pism_config:surface.pdd.std_dev_param_a_type = "scalar";
-    pism_config:surface.pdd.std_dev_param_a_units = "pure number";
+    pism_config:surface.pdd.std_dev_seguinot_param_a = 1.66;
+    pism_config:surface.pdd.std_dev_seguinot_param_a_doc = "Parameter a in Sigma = a + b*T, with T in degrees C. Used only if surface.pdd.std_dev_seguinot_use_param is set to yes.";
+    pism_config:surface.pdd.std_dev_seguinot_param_a_type = "scalar";
+    pism_config:surface.pdd.std_dev_seguinot_param_a_units = "Kelvin";
 
-    pism_config:surface.pdd.std_dev_param_b = 0.66;
-    pism_config:surface.pdd.std_dev_param_b_doc = "Parameter b in Sigma = a*T + b, with T in degrees C. Used only if surface.pdd.std_dev_use_param is set to yes.";
-    pism_config:surface.pdd.std_dev_param_b_type = "scalar";
-    pism_config:surface.pdd.std_dev_param_b_units = "Kelvin";
+    pism_config:surface.pdd.std_dev_seguinot_param_b = -0.15;
+    pism_config:surface.pdd.std_dev_seguinot_param_b_doc = "Parameter b in Sigma = a + b*T, with T in degrees C. Used only if surface.pdd.std_dev_seguinot_use_param is set to yes.";
+    pism_config:surface.pdd.std_dev_seguinot_param_b_type = "scalar";
+    pism_config:surface.pdd.std_dev_seguinot_param_b_units = "pure number";
 
-    pism_config:surface.pdd.std_dev_use_param = "no";
-    pism_config:surface.pdd.std_dev_use_param_doc = "Parameterize standard deviation as a linear function of air temperature over ice-covered grid cells. The region of application is controlled by geometry.ice_free_thickness_standard.";
-    pism_config:surface.pdd.std_dev_use_param_type = "boolean";
+    pism_config:surface.pdd.std_dev_wake_param_a = 2.64;
+    pism_config:surface.pdd.std_dev_wake_param_a_doc = "Parameter a in Sigma = a + b*T + c*T^2, with T in degrees C. Used only if surface.pdd.std_dev_wake_use_param is set to yes.";
+    pism_config:surface.pdd.std_dev_wake_param_a_type = "scalar";
+    pism_config:surface.pdd.std_dev_wake_param_a_units = "Kelvin";
+
+    pism_config:surface.pdd.std_dev_wake_param_b = -0.3;
+    pism_config:surface.pdd.std_dev_wake_param_b_doc = "Parameter b in Sigma = a + b*T + c*T^2, with T in degrees C. Used only if surface.pdd.std_dev_wake_use_param is set to yes.";
+    pism_config:surface.pdd.std_dev_wake_param_b_type = "scalar";
+    pism_config:surface.pdd.std_dev_wake_param_b_units = "pure number";
+
+    pism_config:surface.pdd.std_dev_wake_param_c = -0.0042;
+    pism_config:surface.pdd.std_dev_wake_param_c_doc = "Parameter b in Sigma = a + b*T + c*T^2, with T in degrees C. Used only if surface.pdd.std_dev_wake_use_param is set to yes.";
+    pism_config:surface.pdd.std_dev_wake_param_c_type = "scalar";
+    pism_config:surface.pdd.std_dev_wake_param_c_units = "Kelvin-1";
+
+    pism_config:surface.pdd.std_dev_method = "none,linear,quadratic";
+    pism_config:surface.pdd.std_dev_method_choices = "none";
+    pism_config:surface.pdd.std_dev_method_doc = "comma-separated list of pdd std dev methods; none or one of 'linear', 'quadratic'";
+    pism_config:surface.pdd.std_dev_method_option = "pdd_std_dev_use_param_method";
+    pism_config:surface.pdd.std_dev_method_type = "keyword";
 
     pism_config:surface.pressure = 0.0;
     pism_config:surface.pressure_doc = "atmospheric pressure; = pressure at ice surface";
