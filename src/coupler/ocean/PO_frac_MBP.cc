@@ -1,4 +1,4 @@
-/* Copyright (C) 2013, 2014, 2015, 2016 PISM Authors
+/* Copyright (C) 2013, 2014, 2015, 2016, 2017 PISM Authors
  *
  * This file is part of PISM.
  *
@@ -19,7 +19,7 @@
 
 #include <gsl/gsl_math.h>
 
-#include "PO_delta_MBP.hh"
+#include "PO_frac_MBP.hh"
 #include "base/util/PISMConfigInterface.hh"
 #include "base/util/io/io_helpers.hh"
 #include "base/util/pism_utilities.hh"

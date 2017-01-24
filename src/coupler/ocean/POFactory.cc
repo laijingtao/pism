@@ -1,4 +1,4 @@
-/* Copyright (C) 2015 PISM Authors
+/* Copyright (C) 2015, 2017 PISM Authors
  *
  * This file is part of PISM.
  *
@@ -26,7 +26,7 @@
 #include "PO_delta_SL.hh"
 #include "PO_delta_T.hh"
 #include "PO_delta_SMB.hh"
-#include "PO_delta_MBP.hh"
+#include "PO_frac_MBP.hh"
 #include "PO_frac_SMB.hh"
 #include "POCache.hh"
 #include "POGivenTH.hh" 
