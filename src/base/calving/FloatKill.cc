@@ -1,4 +1,4 @@
-/* Copyright (C) 2013, 2014, 2015, 2016 PISM Authors
+/* Copyright (C) 2013, 2014, 2015, 2016, 2017 PISM Authors
  *
  * This file is part of PISM.
  *
@@ -30,6 +30,7 @@ namespace calving {
 FloatKill::FloatKill(IceGrid::ConstPtr g)
   : Component(g) {
   m_margin_only = m_config->get_boolean("calving.float_kill.margin_only");
+  m_calve_near_grounding_line = m_config->get_boolean("calving.float_kill.calve_near_grounding_line");
 }
 
 FloatKill::~FloatKill() {
@@ -44,6 +45,11 @@ void FloatKill::init() {
     m_log->message(2,
                    "  [only cells at the ice margin are calved during a given time step]\n");
   }
+
+  if (not m_calve_near_grounding_line) {
+    m_log->message(2,
+                   "  [keeping floating cells near the grounding line]\n");
+  }
 }
 
 /**
@@ -57,6 +63,8 @@ void FloatKill::init() {
  */
 void FloatKill::update(IceModelVec2CellType &mask, IceModelVec2S &ice_thickness) {
 
+  const bool dont_calve_near_grounded_ice = not m_calve_near_grounding_line;
+
   IceModelVec::AccessList list;
   list.add(mask);
   list.add(ice_thickness);
@@ -68,6 +76,11 @@ void FloatKill::update(IceModelVec2CellType &mask, IceModelVec2S &ice_thickness)
       if (m_margin_only and not mask.next_to_ice_free_ocean(i, j)) {
         continue;
       }
+
+      if (dont_calve_near_grounded_ice and mask.next_to_grounded_ice(i, j)) {
+        continue;
+      }
+
       ice_thickness(i, j) = 0.0;
       mask(i, j)          = MASK_ICE_FREE_OCEAN;
     }
