@@ -1,4 +1,4 @@
-// Copyright (C) 2004-2016 Jed Brown, Ed Bueler and Constantine Khroulev
+// Copyright (C) 2004-2017 Jed Brown, Ed Bueler and Constantine Khroulev
 //
 // This file is part of PISM.
 //
@@ -302,7 +302,11 @@ unsigned int count_CFL_violations(const IceModelVec3 &u3,
                                   const IceModelVec3 &v3,
                                   const IceModelVec2S &ice_thickness,
                                   double dt) {
-
+  // Protect from division by zero below (dt may be zero when this function is called in the
+  // beginning of a run, before the time step is chosen).
+  if (dt == 0.0) {
+    return 0;
+  }
 
   IceGrid::ConstPtr grid = u3.get_grid();
 
