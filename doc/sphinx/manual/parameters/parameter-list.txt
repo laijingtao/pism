@@ -344,7 +344,7 @@
 
    :Value: *no default*
    :Option: :opt:`-thickness_calving_threshold_file`
-   :Description: Name of the file containing the spatially-variable thickness calving threshold. 
+   :Description: Name of the file containing the spatially-variable thickness calving threshold.
 
 #. :config:`calving.vonmises.sigma_max` (*scalar*)
 
@@ -1218,7 +1218,7 @@
 #. :config:`stress_balance.model` (*keyword*)
 
    :Value: ``sia``
-   :Choices: ``none, prescribed_sliding, sia, ssa, prescribed_sliding+sia, ssa+sia``
+   :Choices: ``none, prescribed_sliding, weertman_sliding, sia, ssa, prescribed_sliding+sia, weertman_sliding+sia, ssa+sia``
    :Option: :opt:`-stress_balance`
    :Description: Stress balance model
 
@@ -1384,6 +1384,27 @@
    :Option: :opt:`-vertical_velocity_approximation`
    :Description: Vertical velocity FD approximation. "Upstream" uses first-order finite difference to compute u_x and v_y. Uses basal velocity to make decisions.
 
+#. :config:`stress_balance.weertman_sliding.A` (*scalar*)
+
+   :Value: 1.800000e-16 (Pa-3 year-1 m-2)
+   :Description: Sliding parameter in the Weertman-style sliding parameterization :cite:`Tomkin2007`
+
+#. :config:`stress_balance.weertman_sliding.k` (*scalar*)
+
+   :Value: 0.200000 (1)
+   :Description: The ratio of the basal water pressure and the ice overburden pressure in the Weertman-style sliding parameterization.
+
+#. :config:`surface.cache.update_interval` (*integer*)
+
+   :Value: 10
+   :Description: Update interval (in years) for the `-surface cache` modifier.
+
+#. :config:`surface.force_to_thickness_file` (*string*)
+
+   :Value: *no default*
+   :Option: :opt:`-force_to_thickness_file`
+   :Description: The name of the file to read the target ice thickness from.
+
 #. :config:`surface.force_to_thickness.alpha` (*scalar*)
 
    :Value: 0.010000 (year-1)
@@ -1519,12 +1540,12 @@
 #. :config:`surface.pdd.std_dev_lapse_lat_base` (*scalar*)
 
    :Value: 72 (degree_north)
-   :Description: std_dev is a function of latitude, with value surface.pdd.std_dev at this latitude; this value only active if surface.pdd.std_dev_lapse_lat_rate is nonzero 
+   :Description: std_dev is a function of latitude, with value surface.pdd.std_dev at this latitude; this value only active if surface.pdd.std_dev_lapse_lat_rate is nonzero
 
 #. :config:`surface.pdd.std_dev_lapse_lat_rate` (*scalar*)
 
    :Value: 0 (Kelvin / degree_north)
-   :Description: std_dev is a function of latitude, with rate of change with respect to latitude given by this constant 
+   :Description: std_dev is a function of latitude, with rate of change with respect to latitude given by this constant
 
 #. :config:`surface.pdd.std_dev_param_a` (*scalar*)
 

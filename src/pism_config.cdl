@@ -778,7 +778,7 @@ netcdf pism_config {
     pism_config:hydrology.model_type = "keyword";
 
     pism_config:hydrology.null_diffuse_till_water = "no";
-    pism_config:hydrology.null_diffuse_till_water_doc = "Diffuse stored till water laterally. See equation (11) of :cite:`BBssasliding`"; 
+    pism_config:hydrology.null_diffuse_till_water_doc = "Diffuse stored till water laterally. See equation (11) of :cite:`BBssasliding`";
     pism_config:hydrology.null_diffuse_till_water_type = "boolean";
 
     pism_config:hydrology.null_diffusion_distance = 2e4;
@@ -1300,6 +1300,26 @@ netcdf pism_config {
     pism_config:stress_balance.vertical_velocity_approximation_doc = "Vertical velocity FD approximation. \"Upstream\" uses first-order finite difference to compute u_x and v_y. Uses basal velocity to make decisions.";
     pism_config:stress_balance.vertical_velocity_approximation_option = "vertical_velocity_approximation";
     pism_config:stress_balance.vertical_velocity_approximation_type = "keyword";
+
+    pism_config:stress_balance.weertman_sliding.A = 1.8e-16;
+    pism_config:stress_balance.weertman_sliding.A_doc = "Sliding parameter in the Weertman-style sliding parameterization :cite:`Tomkin2007`";
+    pism_config:stress_balance.weertman_sliding.A_units = "Pa-3 year-1 m-2";
+    pism_config:stress_balance.weertman_sliding.A_type = "scalar";
+
+    pism_config:stress_balance.weertman_sliding.k = 0.2;
+    pism_config:stress_balance.weertman_sliding.k_doc = "The ratio of the basal water pressure and the ice overburden pressure in the Weertman-style sliding parameterization.";
+    pism_config:stress_balance.weertman_sliding.k_units = "1";
+    pism_config:stress_balance.weertman_sliding.k_type = "scalar";
+
+    pism_config:surface.cache.update_interval = 10;
+    pism_config:surface.cache.update_interval_doc = "Update interval (in years) for the `-surface cache` modifier.";
+    pism_config:surface.cache.update_interval_type = "integer";
+    pism_config:surface.cache.update_interval_units = "year";
+
+    pism_config:surface.force_to_thickness_file = "";
+    pism_config:surface.force_to_thickness_file_option = "force_to_thickness_file";
+    pism_config:surface.force_to_thickness_file_doc = "The name of the file to read the target ice thickness from.";
+    pism_config:surface.force_to_thickness_file_type = "string";
 
     pism_config:surface.force_to_thickness.alpha = 0.01;
     pism_config:surface.force_to_thickness.alpha_doc = "exponential coefficient in force-to-thickness mechanism";
