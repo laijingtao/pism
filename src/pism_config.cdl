@@ -1311,6 +1311,16 @@ netcdf pism_config {
     pism_config:stress_balance.weertman_sliding.k_units = "1";
     pism_config:stress_balance.weertman_sliding.k_type = "scalar";
 
+    pism_config:stress_balance.weertman_sliding.simple.enabled = "yes";
+    pism_config:stress_balance.weertman_sliding.simple.enabled_doc = "Enable the simple form of the Weertman-style sliding parameterization.";
+    pism_config:stress_balance.weertman_sliding.simple.enabled_option = "simple_weertman_sliding";
+    pism_config:stress_balance.weertman_sliding.simple.enabled_type = "boolean";
+
+    pism_config:stress_balance.weertman_sliding.f = 1.27;
+    pism_config:stress_balance.weertman_sliding.f_doc = "Sliding parameter in the simple form of the Weertman-style sliding parameterization.";
+    pism_config:stress_balance.weertman_sliding.f_units = "m-1 year-1";
+    pism_config:stress_balance.weertman_sliding.f_type = "scalar";
+
     pism_config:surface.cache.update_interval = 10;
     pism_config:surface.cache.update_interval_doc = "Update interval (in years) for the `-surface cache` modifier.";
     pism_config:surface.cache.update_interval_type = "integer";
