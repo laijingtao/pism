@@ -112,7 +112,7 @@ void WeertmanSliding::update(const Inputs &inputs, bool full_update) {
       // 2 * A_s / (1 - k) * pow(P * P * (h_x * h_x + h_y * h_y), (n - 1) / 2) * grad_h;
       // ... but I'm not sure we need to and the current code is cleaner.
       if (m_config->get_boolean("stress_balance.weertman_sliding.simple.enabled") == true) {
-        m_velocity(i, j) = f_s * pow(H(i, j) * grad_h.magnitude(), n - 1) * grad_h;
+        m_velocity(i, j) = -f_s * pow(H(i, j) * grad_h.magnitude(), n - 1) * grad_h;
       } else {
         m_velocity(i, j) = 2.0 * A_s / (1.0 - k) * pow(P_o * grad_h.magnitude(), n - 1) * grad_h;
       }
