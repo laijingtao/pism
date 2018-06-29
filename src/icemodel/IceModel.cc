@@ -597,6 +597,26 @@ void IceModel::step(bool do_mass_continuity,
     m_beddef->update(current_time, m_dt);
     profiling.end("bed_deformation");
 
+    bool do_erosion = m_config->get_boolean("bed_deformation.erosion.enabled");
+    if (do_erosion) {
+      const IceModelVec3
+        &erosion_u3 = m_stress_balance->velocity_u(),
+        &erosion_v3 = m_stress_balance->velocity_v();
+
+      IceModelVec2S tmp_u, tmp_v;
+      tmp_u.create(m_grid, "tmp_u", WITHOUT_GHOSTS);
+      tmp_v.create(m_grid, "tmp_v", WITHOUT_GHOSTS);
+
+      erosion_u3.getHorSlice(tmp_u, 0.0);
+      erosion_v3.getHorSlice(tmp_v, 0.0);
+
+      IceModelVec2S::Ptr sliding_mag(new IceModelVec2S(m_grid, "sliding_mag", WITHOUT_GHOSTS));
+
+      sliding_mag->set_to_magnitude(tmp_u, tmp_v);
+
+      m_beddef->update_erosion(*sliding_mag, m_dt);
+    }
+
     if (m_beddef->bed_elevation().get_state_counter() != topg_state_counter) {
       m_new_bed_elevation = true;
     } else {
