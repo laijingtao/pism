@@ -113,7 +113,9 @@ void BedDef::update(const IceModelVec2S &ice_thickness, double t, double dt) {
 void BedDef::update_erosion(const IceModelVec2S &sliding_mag, double dt) {
   double k_g = m_config->get_double("bed_deformation.erosion.k_g");
   double l = m_config->get_double("bed_deformation.erosion.exponent");
-  /*
+
+  IceModelVec::AccessList list{&m_topg, &sliding_mag};
+
   for (Points p(*m_grid); p; p.next()) {
     const int i = p.i(), j = p.j();
     if (l == 1.0) {
@@ -123,7 +125,6 @@ void BedDef::update_erosion(const IceModelVec2S &sliding_mag, double dt) {
     }
   }
   m_topg.inc_state_counter();
-  */
 }
 
 //! Initialize from the context (input file and the "variables" database).
