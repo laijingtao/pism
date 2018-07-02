@@ -116,14 +116,21 @@ void BedDef::update_erosion(const IceModelVec2S &sliding_mag, double dt) {
 
   IceModelVec::AccessList list{&m_topg, &sliding_mag};
 
-  for (Points p(*m_grid); p; p.next()) {
-    const int i = p.i(), j = p.j();
-    if (l == 1.0) {
-      m_topg(i, j) = m_topg(i, j) - dt / 31557600 * (k_g * sliding_mag(i, j) * 31557600);
-    } else {
-      m_topg(i, j) = m_topg(i, j) - dt / 31557600 * (k_g * pow(sliding_mag(i, j) * 31557600, l));
+  ParallelSection loop(m_grid->com);
+  try {
+    for (Points p(*m_grid); p; p.next()) {
+      const int i = p.i(), j = p.j();
+      if (l == 1.0) {
+        m_topg(i, j) = m_topg(i, j) - dt / 31557600 * (k_g * sliding_mag(i, j) * 31557600);
+      } else {
+        m_topg(i, j) = m_topg(i, j) - dt / 31557600 * (k_g * pow(sliding_mag(i, j) * 31557600, l));
+      }
     }
+  } catch (...) {
+    loop.failed();
   }
+  loop.check();
+
   m_topg.inc_state_counter();
 }
 
