@@ -132,6 +132,9 @@ void BedDef::update_erosion(const IceModelVec2S &sliding_mag, double dt) {
   loop.check();
 
   m_topg.inc_state_counter();
+
+  compute_uplift(dt);
+  m_topg_last.copy_from(m_topg);
 }
 
 //! Initialize from the context (input file and the "variables" database).

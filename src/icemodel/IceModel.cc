@@ -595,7 +595,6 @@ void IceModel::step(bool do_mass_continuity,
 
     profiling.begin("bed_deformation");
     m_beddef->update(current_time, m_dt);
-    profiling.end("bed_deformation");
 
     bool do_erosion = m_config->get_boolean("bed_deformation.erosion.enabled");
     if (do_erosion) {
@@ -616,6 +615,8 @@ void IceModel::step(bool do_mass_continuity,
 
       m_beddef->update_erosion(*sliding_mag, m_dt);
     }
+
+    profiling.end("bed_deformation");
 
     if (m_beddef->bed_elevation().get_state_counter() != topg_state_counter) {
       m_new_bed_elevation = true;
