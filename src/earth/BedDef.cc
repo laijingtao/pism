@@ -110,18 +110,19 @@ void BedDef::update(const IceModelVec2S &ice_thickness, double t, double dt) {
   this->update_with_thickness_impl(ice_thickness, t, dt);
 }
 
-void BedDef::update_erosion(const IceModelVec2S &sliding_mag, double dt) {
+void BedDef::update_erosion(const IceModelVec2S &sliding_mag,
+                            const IceModelVec2CellType &mask,
+                            double dt) {
   double k_g = m_config->get_double("bed_deformation.erosion.k_g");
   double l = m_config->get_double("bed_deformation.erosion.exponent");
-  const IceModelVec2S &thk = *m_grid->variables().get_2d_scalar("land_ice_thickness");
 
-  IceModelVec::AccessList list{&m_topg, &sliding_mag, &thk};
+  IceModelVec::AccessList list{&m_topg, &sliding_mag, &mask};
 
   ParallelSection loop(m_grid->com);
   try {
     for (Points p(*m_grid); p; p.next()) {
       const int i = p.i(), j = p.j();
-      if (thk(i, j) > 1.0) {
+      if (mask.grounded_ice(i, j)) {
         if (l == 1.0) {
           m_topg(i, j) = m_topg(i, j) - dt / 31557600 * (k_g * sliding_mag(i, j) * 31557600);
         } else {

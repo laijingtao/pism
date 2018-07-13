@@ -613,7 +613,7 @@ void IceModel::step(bool do_mass_continuity,
 
       sliding_mag->set_to_magnitude(tmp_u, tmp_v);
 
-      m_beddef->update_erosion(*sliding_mag, m_dt);
+      m_beddef->update_erosion(*sliding_mag, m_geometry.cell_type, m_dt);
     }
 
     profiling.end("bed_deformation");
