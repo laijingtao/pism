@@ -616,6 +616,11 @@ void IceModel::step(bool do_mass_continuity,
       m_beddef->update_erosion(*sliding_mag, m_geometry.cell_type, m_dt);
     }
 
+    bool do_fixed_uplift = m_config->get_boolean("bed_deformation.fixed_uplift.enabled");
+    if (do_fixed_uplift) {
+      m_beddef->update_fixed_uplift(m_dt);
+    }
+
     profiling.end("bed_deformation");
 
     if (m_beddef->bed_elevation().get_state_counter() != topg_state_counter) {

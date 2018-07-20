@@ -250,6 +250,16 @@ netcdf pism_config {
     pism_config:bed_deformation.erosion.exponent_option = "erosion_l";
     pism_config:bed_deformation.erosion.exponent_type = "scalar";
 
+    pism_config:bed_deformation.fixed_uplift.enabled = "no";
+    pism_config:bed_deformation.fixed_uplift.enabled_doc = "Turn on/off fixed uplift";
+    pism_config:bed_deformation.fixed_uplift.enabled_option = "fixed_uplift";
+    pism_config:bed_deformation.fixed_uplift.enabled_type = "boolean";
+
+    pism_config:bed_deformation.fixed_uplift_file = "";
+    pism_config:bed_deformation.fixed_uplift_file_option = "fixed_uplift_file";
+    pism_config:bed_deformation.fixed_uplift_file_doc = "The name of the file to read the fixed uplift rate.";
+    pism_config:bed_deformation.fixed_uplift_file_type = "string";
+
     pism_config:bootstrapping.defaults.bed = 1.0;
     pism_config:bootstrapping.defaults.bed_doc = "bed elevation value to use if topg (bedrock_altitude) variable is absent in bootstrapping file";
     pism_config:bootstrapping.defaults.bed_type = "scalar";

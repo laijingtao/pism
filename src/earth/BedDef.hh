@@ -47,6 +47,7 @@ public:
   void update_erosion(const IceModelVec2S &sliding_mag,
                       const IceModelVec2CellType &mask,
                       double my_dt);
+  void update_fixed_uplift(double dt);
 
   const IceModelVec2S& bed_elevation() const;
   const IceModelVec2S& uplift() const;
@@ -79,6 +80,9 @@ protected:
 
   //! bed uplift rate
   IceModelVec2S m_uplift;
+
+  //! fixed uplift rate
+  IceModelVec2S m_fixed_uplift;
 };
 
 class Null : public BedDef {
