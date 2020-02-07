@@ -128,10 +128,6 @@ bool member(const std::string &string, const std::set<std::string> &set) {
   return (set.find(string) != set.end());
 }
 
-bool member(const std::string &string, const std::set<std::string> &set) {
-  return (set.find(string) != set.end());
-}
-
 void GlobalReduce(MPI_Comm comm, double *local, double *result, int count, MPI_Op op) {
   int err = MPI_Allreduce(local, result, count, MPI_DOUBLE, op, comm);
   PISM_C_CHK(err, 0, "MPI_Allreduce");
