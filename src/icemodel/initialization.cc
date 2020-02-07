@@ -50,6 +50,7 @@
 #include "pism/coupler/surface/Factory.hh"
 #include "pism/coupler/surface/Initialization.hh"
 #include "pism/earth/LingleClark.hh"
+#include "pism/earth/LEM.hh"
 #include "pism/earth/BedDef.hh"
 #include "pism/util/EnthalpyConverter.hh"
 #include "pism/util/Vars.hh"
@@ -877,6 +878,9 @@ void IceModel::allocate_bed_deformation() {
   }
   else if (model == "lc") {
     m_beddef = new bed::LingleClark(m_grid);
+  }
+  else if (model == "lem") {
+    m_beddef = new bed::LandscapeEvolution(m_grid);
   }
 
   m_submodels["bed deformation"] = m_beddef;

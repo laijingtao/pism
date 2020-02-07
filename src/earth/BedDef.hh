@@ -21,7 +21,6 @@
 
 #include "pism/util/Component.hh"
 #include "pism/util/iceModelVec.hh"
-#include "pism/util/IceModelVec2CellType.hh"
 
 namespace pism {
 
@@ -43,11 +42,6 @@ public:
   using Component_TS::update;
   void update(const IceModelVec2S &ice_thickness,
               double my_t, double my_dt);
-
-  void update_erosion(const IceModelVec2S &sliding_mag,
-                      const IceModelVec2CellType &mask,
-                      double my_dt);
-  void update_fixed_uplift(double dt);
 
   const IceModelVec2S& bed_elevation() const;
   const IceModelVec2S& uplift() const;
@@ -80,9 +74,6 @@ protected:
 
   //! bed uplift rate
   IceModelVec2S m_uplift;
-
-  //! fixed uplift rate
-  IceModelVec2S m_fixed_uplift;
 };
 
 class Null : public BedDef {

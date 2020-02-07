@@ -44,6 +44,7 @@
 #include "pism/coupler/OceanModel.hh"
 #include "pism/coupler/SurfaceModel.hh"
 #include "pism/earth/BedDef.hh"
+#include "pism/earth/LEM.hh"
 #include "pism/util/EnthalpyConverter.hh"
 #include "pism/util/pism_signal.h"
 #include "pism/util/Vars.hh"
@@ -596,29 +597,15 @@ void IceModel::step(bool do_mass_continuity,
     profiling.begin("bed_deformation");
     m_beddef->update(current_time, m_dt);
 
-    bool do_erosion = m_config->get_boolean("bed_deformation.erosion.enabled");
-    if (do_erosion) {
-      const IceModelVec3
-        &erosion_u3 = m_stress_balance->velocity_u(),
-        &erosion_v3 = m_stress_balance->velocity_v();
+    std::string beddef_model_name = m_config->get_string("bed_deformation.model");
+    if (beddef_model_name == "lem") {
+      LEMInputs leminputs;
+      leminputs.u3 = &m_stress_balance->velocity_u();
+      leminputs.v3 = &m_stress_balance->velocity_v();
+      leminputs.mask = &m_geometry.cell_type;
+      leminputs.dt = m_dt;
 
-      IceModelVec2S tmp_u, tmp_v;
-      tmp_u.create(m_grid, "tmp_u", WITHOUT_GHOSTS);
-      tmp_v.create(m_grid, "tmp_v", WITHOUT_GHOSTS);
-
-      erosion_u3.getHorSlice(tmp_u, 0.0);
-      erosion_v3.getHorSlice(tmp_v, 0.0);
-
-      IceModelVec2S::Ptr sliding_mag(new IceModelVec2S(m_grid, "sliding_mag", WITHOUT_GHOSTS));
-
-      sliding_mag->set_to_magnitude(tmp_u, tmp_v);
-
-      m_beddef->update_erosion(*sliding_mag, m_geometry.cell_type, m_dt);
-    }
-
-    bool do_fixed_uplift = m_config->get_boolean("bed_deformation.fixed_uplift.enabled");
-    if (do_fixed_uplift) {
-      m_beddef->update_fixed_uplift(m_dt);
+      m_beddef->update_lem(leminputs);
     }
 
     profiling.end("bed_deformation");

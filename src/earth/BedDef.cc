@@ -24,7 +24,6 @@
 #include "pism/util/Vars.hh"
 #include "pism/util/IceGrid.hh"
 #include "pism/util/ConfigInterface.hh"
-#include "pism/util/error_handling.hh"
 
 namespace pism {
 namespace bed {
@@ -48,10 +47,6 @@ BedDef::BedDef(IceGrid::ConstPtr g)
   m_uplift.set_attrs("model_state", "bedrock uplift rate",
                      "m s-1", "tendency_of_bedrock_altitude");
   m_uplift.metadata().set_string("glaciological_units", "mm year-1");
-
-  m_fixed_uplift.create(m_grid, "fixed_uplift", WITHOUT_GHOSTS);
-  m_fixed_uplift.set_attrs("model_state", "fixed bedrock uplift rate",
-                           "m year-1", "fixed_uplift_rate");
 }
 
 BedDef::~BedDef() {
@@ -115,51 +110,6 @@ void BedDef::update(const IceModelVec2S &ice_thickness, double t, double dt) {
   this->update_with_thickness_impl(ice_thickness, t, dt);
 }
 
-void BedDef::update_erosion(const IceModelVec2S &sliding_mag,
-                            const IceModelVec2CellType &mask,
-                            double dt) {
-  double k_g = m_config->get_double("bed_deformation.erosion.k_g");
-  double l = m_config->get_double("bed_deformation.erosion.exponent");
-
-  IceModelVec::AccessList list{&m_topg, &sliding_mag, &mask};
-
-  ParallelSection loop(m_grid->com);
-  try {
-    for (Points p(*m_grid); p; p.next()) {
-      const int i = p.i(), j = p.j();
-      if (mask.grounded_ice(i, j)) {
-        if (l == 1.0) {
-          m_topg(i, j) = m_topg(i, j) - dt / 31557600.0 * (k_g * sliding_mag(i, j) * 31557600.0);
-        } else {
-          m_topg(i, j) = m_topg(i, j) - dt / 31557600.0 * (k_g * pow(sliding_mag(i, j) * 31557600.0, l));
-        }
-      }
-    }
-  } catch (...) {
-    loop.failed();
-  }
-  loop.check();
-
-  m_topg.inc_state_counter();
-}
-
-void BedDef::update_fixed_uplift(double dt) {
-  IceModelVec::AccessList list{&m_topg, &m_fixed_uplift};
-
-  ParallelSection loop(m_grid->com);
-  try {
-    for (Points p(*m_grid); p; p.next()) {
-      const int i = p.i(), j = p.j();
-      m_topg(i, j) = m_topg(i, j) + m_fixed_uplift(i, j) * dt / 31557600.0;
-    }
-  } catch (...) {
-    loop.failed();
-  }
-  loop.check();
-
-  m_topg.inc_state_counter();
-}
-
 //! Initialize from the context (input file and the "variables" database).
 void BedDef::init_impl(const InputOptions &opts) {
   m_t_beddef_last = m_grid->ctx()->time()->start();
@@ -203,19 +153,6 @@ void BedDef::init_impl(const InputOptions &opts) {
                    "    reading bed uplift from %s ... \n",
                    uplift_file.c_str());
     m_uplift.regrid(uplift_file, CRITICAL);
-  }
-
-  bool do_fixed_uplift = m_config->get_boolean("bed_deformation.fixed_uplift.enabled");
-  if (do_fixed_uplift) {
-    std::string fixed_uplift_file = m_config->get_string("bed_deformation.fixed_uplift_file");
-    if (fixed_uplift_file.empty()) {
-      throw RuntimeError::formatted(PISM_ERROR_LOCATION,
-                                    "missing fixed_uplift_file");
-    }
-    m_log->message(2,
-                   "    reading bed uplift from %s ... \n",
-                   fixed_uplift_file.c_str());
-    m_fixed_uplift.regrid(fixed_uplift_file, CRITICAL);
   }
 
   std::string correction_file = m_config->get_string("bed_deformation.bed_topography_delta_file");
