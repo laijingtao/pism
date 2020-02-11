@@ -922,7 +922,7 @@ void IceModel::allocate_bed_deformation() {
   else if (model == "lc") {
     m_beddef = new bed::LingleClark(m_grid);
   }
-  else if (model == 'lem') {
+  else if (model == "lem") {
     m_beddef = new bed::LandEvo(m_grid);
   }
 

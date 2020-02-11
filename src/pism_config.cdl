@@ -313,8 +313,8 @@ netcdf pism_config {
     pism_config:bed_deformation.mantle_viscosity_units = "Pascal second";
 
     pism_config:bed_deformation.model = "none";
-    pism_config:bed_deformation.model_choices = "none,iso,lc";
-    pism_config:bed_deformation.model_doc = "Selects a bed deformation model to use. 'iso' is point-wise isostasy, 'lc' is the Lingle-Clark model (see :cite:`LingleClark`, requires FFTW3).";
+    pism_config:bed_deformation.model_choices = "none,iso,lc,lem";
+    pism_config:bed_deformation.model_doc = "Selects a bed deformation model to use. 'iso' is point-wise isostasy, 'lc' is the Lingle-Clark model (see :cite:`LingleClark`, requires FFTW3), 'lem' is the landscape evolution model.";
     pism_config:bed_deformation.model_option = "bed_def";
     pism_config:bed_deformation.model_type = "keyword";
 
@@ -332,6 +332,31 @@ netcdf pism_config {
     pism_config:bed_deformation.bed_uplift_file_option = "uplift_file";
     pism_config:bed_deformation.bed_uplift_file_doc = "The name of the file to read the uplift (dbdt) from. Leave empty to read it from an input file or a regridding file.";
     pism_config:bed_deformation.bed_uplift_file_type = "string";
+
+    pism_config:bed_deformation.erosion.enabled = "no";
+    pism_config:bed_deformation.erosion.enabled_doc = "Turn on/off erosion";
+    pism_config:bed_deformation.erosion.enabled_option = "erosion";
+    pism_config:bed_deformation.erosion.enabled_type = "boolean";
+
+    pism_config:bed_deformation.erosion.k_g = 1e-4;
+    pism_config:bed_deformation.erosion.k_g_doc = "The coefficient in glacial erosion law";
+    pism_config:bed_deformation.erosion.k_g_option = "erosion_k";
+    pism_config:bed_deformation.erosion.k_g_type = "scalar";
+
+    pism_config:bed_deformation.erosion.exponent = 1.0;
+    pism_config:bed_deformation.erosion.exponent_doc = "The exponent in glacial erosion law";
+    pism_config:bed_deformation.erosion.exponent_option = "erosion_l";
+    pism_config:bed_deformation.erosion.exponent_type = "scalar";
+
+    pism_config:bed_deformation.prescribed_uplift.enabled = "no";
+    pism_config:bed_deformation.prescribed_uplift.enabled_doc = "Turn on/off prescribed uplift";
+    pism_config:bed_deformation.prescribed_uplift.enabled_option = "prescribed_uplift";
+    pism_config:bed_deformation.prescribed_uplift.enabled_type = "boolean";
+
+    pism_config:bed_deformation.prescribed_uplift_file = "";
+    pism_config:bed_deformation.prescribed_uplift_file_option = "prescribed_uplift_file";
+    pism_config:bed_deformation.prescribed_uplift_file_doc = "The name of the file to read the prescribed uplift rate.";
+    pism_config:bed_deformation.prescribed_uplift_file_type = "string";
 
     pism_config:bootstrapping.defaults.bed = 1.0;
     pism_config:bootstrapping.defaults.bed_doc = "bed elevation value to use if topg (bedrock_altitude) variable is absent in bootstrapping file";

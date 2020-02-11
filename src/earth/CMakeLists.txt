@@ -7,4 +7,5 @@ add_library(earth OBJECT
   LingleClarkSerial.cc
   greens.cc
   matlablike.cc
+  LandEvo.cc
   )

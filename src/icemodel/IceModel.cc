@@ -732,6 +732,10 @@ void IceModel::step(bool do_mass_continuity,
     m_beddef->update(m_geometry.ice_thickness,
                      m_geometry.sea_level_elevation,
                      current_time, m_dt);
+    if (m_beddef->land_evo_model_enabled) {
+      m_beddef->update_lem(m_stress_balance->velocity_u(), m_stress_balance->velocity_v(),
+                           m_geometry.cell_type, m_dt);
+    }
     profiling.end("bed_deformation");
 
     if (m_beddef->bed_elevation().state_counter() != topg_state_counter) {

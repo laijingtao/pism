@@ -49,11 +49,14 @@ LandEvo::~LandEvo() {
   // empty
 }
 
-void LandEvo::init(const InputOptions &opts) {
-  this->init_impl(opts);
-}
+void LandEvo::init_impl(const InputOptions &opts, const IceModelVec2S &ice_thickness,
+                        const IceModelVec2S &sea_level_elevation) {
 
-void LandEvo::init_impl(const InputOptions &opts) {
+  // ice_thickness and sea_level_elevation are not used (for now)
+  (void) ice_thickness;
+  (void) sea_level_elevation;
+
+  land_evo_model_enabled = true;
 
   m_log->message(2,
              "* Initializing the landscape evolution model...\n");
@@ -101,12 +104,15 @@ void LandEvo::init_impl(const InputOptions &opts) {
 
 }
 
-void LandEvo::update(
-    const IceModelVec3 &u3,
-    const IceModelVec3 &v3,
-    const IceModelVec2CellType &mask,
-    double dt) {
-  this->update_lem(u3, v3, mask, dt);
+void LandEvo::update_impl(const IceModelVec2S &ice_thickness,
+                       const IceModelVec2S &sea_level_elevation,
+                       double t, double dt) {
+  
+  // have to have this func doing nothing because it is a pure virtual func in BedDef.hh
+  (void) ice_thickness;
+  (void) sea_level_elevation;
+  (void) t;
+  (void) dt;
 }
 
 void LandEvo::update_lem(
@@ -114,25 +120,14 @@ void LandEvo::update_lem(
     const IceModelVec3 &v3,
     const IceModelVec2CellType &mask,
     double dt) {
+
   if (do_erosion) {
     this->update_erosion(u3, v3, mask, dt);
   }
 
-  bool do_prescribed_uplift = m_config->get_boolean("bed_deformation.prescribed_uplift.enabled");
   if (do_prescribed_uplift) {
     this->update_prescribed_uplift(dt);
   }
-}
-
-// have to have this update_impl doing nothing because it's a pure virtual func in BedDef
-void LandEvo::update_impl(const IceModelVec2S &ice_thickness,
-                       const IceModelVec2S &sea_level_elevation,
-                       double t, double dt) {
-  (void) ice_thickness;
-  (void) sea_level_elevation;
-  (void) t;
-  (void) dt;
-  // This model does not update bed topography or bed uplift based on ice_thickness and sea_level.
 }
 
 void LandEvo::update_erosion(const IceModelVec3 &u3,
@@ -192,13 +187,6 @@ void LandEvo::update_prescribed_uplift(double dt) {
   m_topg.inc_state_counter();
 }
 
-void LandEvo::update_with_thickness_impl(const IceModelVec2S &ice_thickness,
-                                  double my_t, double my_dt) {
-  (void) ice_thickness;
-  (void) my_t;
-  (void) my_dt;
-  // This model does not update isostatic change.
-}
 
 } // end of namespace bed
 } // end of namespace pism

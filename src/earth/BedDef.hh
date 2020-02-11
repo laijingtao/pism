@@ -21,6 +21,8 @@
 
 #include "pism/util/Component.hh"
 #include "pism/util/iceModelVec.hh"
+#include "pism/util/IceModelVec2CellType.hh"
+
 
 namespace pism {
 
@@ -55,6 +57,13 @@ public:
 
   const IceModelVec2S& bed_elevation() const;
   const IceModelVec2S& uplift() const;
+
+  void update_lem(
+    const IceModelVec3 &u3,
+    const IceModelVec3 &v3,
+    const IceModelVec2CellType &mask,
+    double dt);
+  bool land_evo_model_enabled = false;
 
 protected:
   virtual void define_model_state_impl(const PIO &output) const;
