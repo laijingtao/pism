@@ -58,7 +58,7 @@ public:
   const IceModelVec2S& bed_elevation() const;
   const IceModelVec2S& uplift() const;
 
-  void update_lem(
+  virtual void update_lem(
     const IceModelVec3 &u3,
     const IceModelVec3 &v3,
     const IceModelVec2CellType &mask,

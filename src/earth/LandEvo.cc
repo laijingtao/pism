@@ -126,6 +126,8 @@ void LandEvo::update_erosion(const IceModelVec3 &u3,
 
   IceModelVec::AccessList list{&m_topg, &sliding_mag, &mask};
 
+  // unit of dt is second, unit of sliding_mag is m/sec
+  // E_g = k_g * u_s ^ l, the unit of k_g is (m/year) ^ (1-l)
   ParallelSection loop(m_grid->com);
   try {
     for (Points p(*m_grid); p; p.next()) {

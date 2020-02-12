@@ -21,7 +21,6 @@ public:
 
 protected:
   bool do_erosion = false, do_prescribed_uplift = false;
-  IceModelVec2S m_topg;
   IceModelVec2S m_prescribed_uplift;
 
   void init_impl(const InputOptions &opts, const IceModelVec2S &ice_thickness,
