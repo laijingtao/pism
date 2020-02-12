@@ -134,7 +134,8 @@ void LandEvo::update_erosion(const IceModelVec3 &u3,
       const int i = p.i(), j = p.j();
       if (mask.grounded_ice(i, j)) {
         if (l == 1.0) {
-          m_topg(i, j) = m_topg(i, j) - dt / 31557600.0 * (k_g * sliding_mag(i, j) * 31557600.0);
+          Vector2 topg_grad = {m_topg.diff_x_p(i, j), m_topg.diff_y_p(i, j)};
+          m_topg(i, j) = m_topg(i, j) - dt / 31557600.0 * (k_g * sliding_mag(i, j) * 31557600.0) * cos(atan(topg_grad.magnitude()));
         } else {
           m_topg(i, j) = m_topg(i, j) - dt / 31557600.0 * (k_g * pow(sliding_mag(i, j) * 31557600.0, l));
         }
