@@ -31,12 +31,6 @@ namespace bed {
 LandEvo::LandEvo(IceGrid::ConstPtr g)
   : BedDef(g) {
 
-  const unsigned int WIDE_STENCIL = m_config->get_double("grid.max_stencil_width");
-
-  m_topg.create(m_grid, "topg", WITH_GHOSTS, WIDE_STENCIL);
-  m_topg.set_attrs("model_state", "bedrock surface elevation",
-                   "m", "bedrock_altitude");
-
   m_prescribed_uplift.create(m_grid, "prescribed_uplift", WITHOUT_GHOSTS);
   m_prescribed_uplift.set_attrs("model_state", "prescribed bedrock uplift rate",
                            "m year-1", "prescribed_uplift_rate");
@@ -59,36 +53,19 @@ void LandEvo::init_impl(const InputOptions &opts, const IceModelVec2S &ice_thick
   land_evo_model_enabled = true;
 
   m_log->message(2,
-             "* Initializing the landscape evolution model...\n");
+             "* Initializing the landscape evolution model (bed deformation model)...\n");
 
   if (do_erosion) {
-    m_log->message(2, "    glacial erosion is enabled \n");
+    m_log->message(2, "   - glacial erosion is enabled \n");
   }
 
   if (do_prescribed_uplift) {
-    m_log->message(2, "    prescribed uplift is enabled \n");
+    m_log->message(2, "   - prescribed uplift is enabled \n");
   }
 
-  switch (opts.type) {
-  case INIT_RESTART:
-    // read bed elevation and uplift rate from file
-    m_log->message(2,
-                   "    reading bed topography and uplift from %s ... \n",
-                   opts.filename.c_str());
-    // re-starting
-    m_topg.read(opts.filename, opts.record); // fails if not found!
-    break;
-  case INIT_BOOTSTRAP:
-    // bootstrapping
-    m_topg.regrid(opts.filename, OPTIONAL,
-                  m_config->get_double("bootstrapping.defaults.bed"));
-    break;
-  case INIT_OTHER:
-  default:
-    {
-      // do nothing
-    }
-  }
+  BedDef::init_impl(opts, ice_thickness, sea_level_elevation);
+
+  m_uplift.set(0.0);
 
   if (do_prescribed_uplift) {
     std::string prescribed_uplift_file = m_config->get_string("bed_deformation.prescribed_uplift_file");
@@ -101,13 +78,12 @@ void LandEvo::init_impl(const InputOptions &opts, const IceModelVec2S &ice_thick
                    prescribed_uplift_file.c_str());
     m_prescribed_uplift.regrid(prescribed_uplift_file, CRITICAL);
   }
-
 }
 
 void LandEvo::update_impl(const IceModelVec2S &ice_thickness,
                        const IceModelVec2S &sea_level_elevation,
                        double t, double dt) {
-  
+
   // have to have this func doing nothing because it is a pure virtual func in BedDef.hh
   (void) ice_thickness;
   (void) sea_level_elevation;
