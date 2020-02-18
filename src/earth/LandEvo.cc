@@ -92,13 +92,14 @@ void LandEvo::update_impl(const IceModelVec2S &ice_thickness,
 }
 
 void LandEvo::update_lem(
+    const IceModelVec2S &ice_thickness,
     const IceModelVec3 &u3,
     const IceModelVec3 &v3,
     const IceModelVec2CellType &mask,
     double dt) {
 
   if (do_erosion) {
-    this->update_erosion(u3, v3, mask, dt);
+    this->update_erosion(ice_thickness, u3, v3, mask, dt);
   }
 
   if (do_prescribed_uplift) {
@@ -106,13 +107,16 @@ void LandEvo::update_lem(
   }
 }
 
-void LandEvo::update_erosion(const IceModelVec3 &u3,
-                            const IceModelVec3 &v3,
-                            const IceModelVec2CellType &mask,
-                            double dt) {
+void LandEvo::update_erosion(
+    const IceModelVec2S &ice_thickness,
+    const IceModelVec3 &u3,
+    const IceModelVec3 &v3,
+    const IceModelVec2CellType &mask,
+    double dt) {
+
   IceModelVec2S tmp_u, tmp_v;
-  tmp_u.create(m_grid, "tmp_u", WITHOUT_GHOSTS);
-  tmp_v.create(m_grid, "tmp_v", WITHOUT_GHOSTS);
+  tmp_u.create(m_grid, "", WITHOUT_GHOSTS);
+  tmp_v.create(m_grid, "", WITHOUT_GHOSTS);
 
   u3.getHorSlice(tmp_u, 0.0);
   v3.getHorSlice(tmp_v, 0.0);
@@ -124,8 +128,14 @@ void LandEvo::update_erosion(const IceModelVec3 &u3,
   double k_g = m_config->get_double("bed_deformation.erosion.k_g");
   double l = m_config->get_double("bed_deformation.erosion.exponent");
 
-  IceModelVec::AccessList list{&m_topg, &sliding_mag, &mask};
+  std::string stabilizing_method = m_config->get_string("bed_deformation.erosion.stabilizing");
+  IceModelVec2S erosion_threshold;
+  erosion_threshold.create(m_grid, "", WITHOUT_GHOSTS);
+  this->compute_erosion_threshold(stabilizing_method, m_topg, ice_thickness, erosion_threshold);
 
+  IceModelVec::AccessList list{&m_topg, &sliding_mag, &mask, &erosion_threshold};
+
+  // compute erosion
   // unit of dt is second, unit of sliding_mag is m/sec
   // E_g = k_g * u_s ^ l, the unit of k_g is (m/year) ^ (1-l)
   ParallelSection loop(m_grid->com);
@@ -133,11 +143,16 @@ void LandEvo::update_erosion(const IceModelVec3 &u3,
     for (Points p(*m_grid); p; p.next()) {
       const int i = p.i(), j = p.j();
       if (mask.grounded_ice(i, j)) {
+        double erosion_amount;
         if (l == 1.0) {
-          Vector2 topg_grad = {m_topg.diff_x_p(i, j), m_topg.diff_y_p(i, j)};
-          m_topg(i, j) = m_topg(i, j) - dt / 31557600.0 * (k_g * sliding_mag(i, j) * 31557600.0) * cos(atan(topg_grad.magnitude()));
+          erosion_amount = dt / 31557600.0 * (k_g * sliding_mag(i, j) * 31557600.0);
         } else {
-          m_topg(i, j) = m_topg(i, j) - dt / 31557600.0 * (k_g * pow(sliding_mag(i, j) * 31557600.0, l));
+          erosion_amount = dt / 31557600.0 * (k_g * pow(sliding_mag(i, j) * 31557600.0, l));
+        }
+        if (erosion_amount < erosion_threshold(i, j)) {
+          m_topg(i, j) = m_topg(i, j) - erosion_amount;
+        } else {
+          m_topg(i, j) = m_topg(i, j) - erosion_threshold(i, j);
         }
       }
     }
@@ -164,6 +179,58 @@ void LandEvo::update_prescribed_uplift(double dt) {
   loop.check();
 
   m_topg.inc_state_counter();
+}
+
+void LandEvo::compute_erosion_threshold(
+    const std::string &stabilizing_method,
+    const IceModelVec2S &bed_elevation,
+    const IceModelVec2S &ice_thickness,
+    IceModelVec2S &results) {
+
+  IceModelVec::AccessList list{&results, &bed_elevation, &ice_thickness};
+
+  for (Points p(*m_grid); p; p.next()) {
+    const int i = p.i(), j = p.j();
+    results(i, j) = 10000.0;
+  }
+
+  int i_inc[4] = {1, -1, 0, 0};
+  int j_inc[4] = {0, 0, 1, -1};
+  
+  if (stabilizing_method == "bed_slope") {
+    double thre_slope = m_config->get_double("bed_deformation.erosion.bed_slope_threshold");
+    
+    ParallelSection loop(m_grid->com);
+    try {
+      for (Points p(*m_grid); p; p.next()) {
+        const int i = p.i(), j = p.j();
+        for (int k = 0; k < 4; k++) {
+          if (i+i_inc[k] < 0 || i+i_inc[k] >= m_grid->Mx() || j+j_inc[k] < 0 || j+j_inc[k]>=m_grid->My()) {
+            continue;
+          }
+          double tmp_result = bed_elevation(i, j) - (bed_elevation(i+i_inc[k], j+j_inc[k]) - tan(thre_slope/360*2*M_PI) * m_grid->dx());
+          if (tmp_result < results(i, j)) {
+            results(i, j) = tmp_result;
+          }
+        }
+      }
+    } catch (...) {
+      loop.failed();
+    }
+    loop.check();
+    
+    }
+  else if (stabilizing_method == "surf_slope") {
+    // empty (for now)
+  }
+  else if (stabilizing_method == "none") {
+    // empty
+  }
+  else {
+    throw RuntimeError::formatted(PISM_ERROR_LOCATION,
+                                  "Unknown erosion stabilizing method");
+  }
+  
 }
 
 

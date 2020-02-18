@@ -59,6 +59,7 @@ public:
   const IceModelVec2S& uplift() const;
 
   virtual void update_lem(
+    const IceModelVec2S &ice_thickness,
     const IceModelVec3 &u3,
     const IceModelVec3 &v3,
     const IceModelVec2CellType &mask,

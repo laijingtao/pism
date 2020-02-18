@@ -113,11 +113,13 @@ void BedDef::update(const IceModelVec2S &ice_thickness,
 }
 
 void BedDef::update_lem(
+    const IceModelVec2S& ice_thickness,
     const IceModelVec3 &u3,
     const IceModelVec3 &v3,
     const IceModelVec2CellType &mask,
     double dt) {
 
+  (void) ice_thickness;
   (void) u3;
   (void) v3;
   (void) mask;

@@ -348,6 +348,17 @@ netcdf pism_config {
     pism_config:bed_deformation.erosion.exponent_option = "erosion_l";
     pism_config:bed_deformation.erosion.exponent_type = "scalar";
 
+    pism_config:bed_deformation.erosion.stabilizing = "none";
+    pism_config:bed_deformation.erosion.stabilizing_choices = "none,bed_slope,surf_slope";
+    pism_config:bed_deformation.erosion.stabilizing_doc = "Stabilizing method for glacial erosion. 'bed_slope' method uses a fixed bed slope threoshold. 'surf_slope' method uses a slope threshold depended on ice surface slope (see Alley et al 2003).";
+    pism_config:bed_deformation.erosion.stabilizing_option = "erosion_stabilizing";
+    pism_config:bed_deformation.erosion.stabilizing_type = "string";
+
+    pism_config:bed_deformation.erosion.bed_slope_threshold = 89.0;
+    pism_config:bed_deformation.erosion.bed_slope_threshold_doc = "Bed slope threshold used in 'bed_slope' method";
+    pism_config:bed_deformation.erosion.bed_slope_threshold_option = "erosion_bed_slope_threshold";
+    pism_config:bed_deformation.erosion.bed_slope_threshold_type = "scalar";
+
     pism_config:bed_deformation.prescribed_uplift.enabled = "no";
     pism_config:bed_deformation.prescribed_uplift.enabled_doc = "Turn on/off prescribed uplift";
     pism_config:bed_deformation.prescribed_uplift.enabled_option = "prescribed_uplift";
