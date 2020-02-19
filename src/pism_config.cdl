@@ -359,6 +359,11 @@ netcdf pism_config {
     pism_config:bed_deformation.erosion.bed_slope_threshold_option = "erosion_bed_slope_threshold";
     pism_config:bed_deformation.erosion.bed_slope_threshold_type = "scalar";
 
+    pism_config:bed_deformation.erosion.surf_slope_scale_factor = 1.5;
+    pism_config:bed_deformation.erosion.surf_slope_scale_factor_doc = "In 'surf_slope' method, bed slope threshold equals this factor times ice surface slope (see Alley et al 2003).";
+    pism_config:bed_deformation.erosion.surf_slope_scale_factor_option = "erosion_surf_slope_scale_factor";
+    pism_config:bed_deformation.erosion.surf_slope_scale_factor_type = "scalar";
+
     pism_config:bed_deformation.prescribed_uplift.enabled = "no";
     pism_config:bed_deformation.prescribed_uplift.enabled_doc = "Turn on/off prescribed uplift";
     pism_config:bed_deformation.prescribed_uplift.enabled_option = "prescribed_uplift";

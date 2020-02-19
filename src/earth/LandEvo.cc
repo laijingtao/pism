@@ -194,8 +194,13 @@ void LandEvo::compute_erosion_threshold(
     results(i, j) = 10000.0;
   }
 
-  int i_inc[4] = {1, -1, 0, 0};
-  int j_inc[4] = {0, 0, 1, -1};
+  int i_inc[8] = {1, -1, 0, 0, 1, -1, 1, -1};
+  int j_inc[8] = {0, 0, 1, -1, 1, -1, -1, 1};
+  double dist[8];
+
+  for (int k = 0; k < 8; k++) {
+    dist[k] = m_grid->dx() * sqrt(pow(i_inc[k], 2) + pow(j_inc[k], 2));
+  }
   
   if (stabilizing_method == "bed_slope") {
     double thre_slope = m_config->get_double("bed_deformation.erosion.bed_slope_threshold");
@@ -204,11 +209,11 @@ void LandEvo::compute_erosion_threshold(
     try {
       for (Points p(*m_grid); p; p.next()) {
         const int i = p.i(), j = p.j();
-        for (int k = 0; k < 4; k++) {
+        for (int k = 0; k < 8; k++) {
           if (i+i_inc[k] < 0 || i+i_inc[k] >= m_grid->Mx() || j+j_inc[k] < 0 || j+j_inc[k]>=m_grid->My()) {
             continue;
           }
-          double tmp_result = bed_elevation(i, j) - (bed_elevation(i+i_inc[k], j+j_inc[k]) - tan(thre_slope/360*2*M_PI) * m_grid->dx());
+          double tmp_result = bed_elevation(i, j) - (bed_elevation(i+i_inc[k], j+j_inc[k]) - tan(thre_slope/360*2*M_PI) * dist[k]);
           if (tmp_result < results(i, j)) {
             results(i, j) = tmp_result;
           }
@@ -221,7 +226,38 @@ void LandEvo::compute_erosion_threshold(
     
     }
   else if (stabilizing_method == "surf_slope") {
-    // empty (for now)
+    // implementation of Alley et al. 2003
+
+    double scale_factor = m_config->get_double("bed_deformation.erosion.surf_slope_scale_factor");
+
+    ParallelSection loop(m_grid->com);
+    try {
+      for (Points p(*m_grid); p; p.next()) {
+        const int i = p.i(), j = p.j();
+        double steepest_surf_slope = -10000;
+        for (int k = 0; k < 8; k++) {
+          if (i+i_inc[k] < 0 || i+i_inc[k] >= m_grid->Mx() || j+j_inc[k] < 0 || j+j_inc[k]>=m_grid->My()) {
+            continue;
+          }
+          double surf_slope = atan((bed_elevation(i, j) + ice_thickness(i, j) - bed_elevation(i+i_inc[k], j+j_inc[k]) - ice_thickness(i+i_inc[k], j+j_inc[k]))/dist[k]);
+          if (surf_slope > steepest_surf_slope) {
+            steepest_surf_slope = surf_slope;
+            if (steepest_surf_slope > 0) {
+              results(i, j) = bed_elevation(i, j) - (bed_elevation(i+i_inc[k], j+j_inc[k]) - tan(scale_factor*steepest_surf_slope/360*2*M_PI) * dist[k]);
+            }
+          }
+        }
+        if (steepest_surf_slope < 0) {
+          // this point is a local depression of surface elevation
+          // all the ice flows towards this point so there shouldn't be any erosion
+          results(i, j) = 0;
+        }
+      }
+    } catch (...) {
+      loop.failed();
+    }
+    loop.check();
+
   }
   else if (stabilizing_method == "none") {
     // empty
