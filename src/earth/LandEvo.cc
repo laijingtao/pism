@@ -247,6 +247,10 @@ void LandEvo::compute_erosion_threshold(
             }
           }
         }
+        if (results(i, j) < 0) {
+          // threshold cannot be negative
+          results(i, j) = 0;
+        }
         if (steepest_surf_slope < 0) {
           // this point is a local depression of surface elevation
           // all the ice flows towards this point so there shouldn't be any erosion
