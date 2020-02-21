@@ -189,17 +189,12 @@ void LandEvo::compute_erosion_threshold(
 
   IceModelVec::AccessList list{&results, &bed_elevation, &ice_thickness};
 
-  for (Points p(*m_grid); p; p.next()) {
-    const int i = p.i(), j = p.j();
-    results(i, j) = 10000.0;
-  }
-
   int i_inc[8] = {1, -1, 0, 0, 1, -1, 1, -1};
   int j_inc[8] = {0, 0, 1, -1, 1, -1, -1, 1};
   double dist[8];
 
   for (int k = 0; k < 8; k++) {
-    dist[k] = m_grid->dx() * sqrt(pow(i_inc[k], 2) + pow(j_inc[k], 2));
+    dist[k] = sqrt(pow(i_inc[k] * m_grid->dx(), 2) + pow(j_inc[k] * m_grid->dy(), 2));
   }
   
   if (stabilizing_method == "bed_slope") {
@@ -209,6 +204,7 @@ void LandEvo::compute_erosion_threshold(
     try {
       for (Points p(*m_grid); p; p.next()) {
         const int i = p.i(), j = p.j();
+        results(i, j) = 10000;
         for (int k = 0; k < 8; k++) {
           if (i+i_inc[k] < 0 || i+i_inc[k] >= m_grid->Mx() || j+j_inc[k] < 0 || j+j_inc[k]>=m_grid->My()) {
             continue;
@@ -234,6 +230,7 @@ void LandEvo::compute_erosion_threshold(
     try {
       for (Points p(*m_grid); p; p.next()) {
         const int i = p.i(), j = p.j();
+        results(i, j) = 10000;
         double steepest_surf_slope = -10000;
         for (int k = 0; k < 8; k++) {
           if (i+i_inc[k] < 0 || i+i_inc[k] >= m_grid->Mx() || j+j_inc[k] < 0 || j+j_inc[k]>=m_grid->My()) {
@@ -243,7 +240,7 @@ void LandEvo::compute_erosion_threshold(
           if (surf_slope > steepest_surf_slope) {
             steepest_surf_slope = surf_slope;
             if (steepest_surf_slope > 0) {
-              results(i, j) = bed_elevation(i, j) - (bed_elevation(i+i_inc[k], j+j_inc[k]) - tan(scale_factor*steepest_surf_slope/360*2*M_PI) * dist[k]);
+              results(i, j) = bed_elevation(i, j) - (bed_elevation(i+i_inc[k], j+j_inc[k]) - tan(scale_factor*steepest_surf_slope) * dist[k]);
             }
           }
         }
