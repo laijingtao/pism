@@ -364,6 +364,16 @@ netcdf pism_config {
     pism_config:bed_deformation.erosion.surf_slope_scale_factor_option = "erosion_surf_slope_scale_factor";
     pism_config:bed_deformation.erosion.surf_slope_scale_factor_type = "scalar";
 
+    pism_config:bed_deformation.fluvial_erosion.stream_power_k = 1e-5;
+    pism_config:bed_deformation.fluvial_erosion.stream_power_k_doc = "The coefficient in stream power erosion law";
+    pism_config:bed_deformation.fluvial_erosion.stream_power_k_option = "stream_power_k";
+    pism_config:bed_deformation.fluvial_erosion.stream_power_k_type = "scalar";
+
+    pism_config:bed_deformation.fluvial_erosion.enabled = "no";
+    pism_config:bed_deformation.fluvial_erosion.enabled_doc = "Turn on/off fluvial erosion";
+    pism_config:bed_deformation.fluvial_erosion.enabled_option = "fluvial_erosion";
+    pism_config:bed_deformation.fluvial_erosion.enabled_type = "boolean";
+
     pism_config:bed_deformation.prescribed_uplift.enabled = "no";
     pism_config:bed_deformation.prescribed_uplift.enabled_doc = "Turn on/off prescribed uplift";
     pism_config:bed_deformation.prescribed_uplift.enabled_option = "prescribed_uplift";

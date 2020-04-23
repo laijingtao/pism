@@ -37,6 +37,7 @@ LandEvo::LandEvo(IceGrid::ConstPtr g)
 
   do_erosion = m_config->get_boolean("bed_deformation.erosion.enabled");
   do_prescribed_uplift = m_config->get_boolean("bed_deformation.prescribed_uplift.enabled");
+  do_fluvial = m_config->get_boolean("bed_deformation.fluvial_erosion.enabled");
 }
 
 LandEvo::~LandEvo() {
@@ -57,6 +58,10 @@ void LandEvo::init_impl(const InputOptions &opts, const IceModelVec2S &ice_thick
 
   if (do_erosion) {
     m_log->message(2, "   - glacial erosion is enabled \n");
+  }
+
+  if (do_erosion) {
+    m_log->message(2, "   - stream power erosion is enabled \n");
   }
 
   if (do_prescribed_uplift) {
@@ -100,6 +105,10 @@ void LandEvo::update_lem(
 
   if (do_erosion) {
     this->update_erosion(ice_thickness, u3, v3, mask, dt);
+  }
+
+  if (do_fluvial) {
+    this->update_fluvial_erosion(ice_thickness, mask, dt);
   }
 
   if (do_prescribed_uplift) {
@@ -269,6 +278,149 @@ void LandEvo::compute_erosion_threshold(
   }
   
 }
+
+void LandEvo::update_fluvial_erosion(
+    const IceModelVec2S &ice_thickness,
+    const IceModelVec2CellType &mask,
+    double dt) {
+
+  std::vector<std::vector<double>> steepest_slope(m_grid->Mx(), std::vector<double>(m_grid->My()));
+  std::vector<std::vector<double>> drainage_area(m_grid->Mx(), std::vector<double>(m_grid->My()));
+  
+
+  this->fluvial_route_flow(m_topg, ice_thickness, drainage_area, steepest_slope);
+  
+  IceModelVec::AccessList list{&m_topg, &mask};
+
+  double k_sp = m_config->get_double("bed_deformation.fluvial_erosion.stream_power_k");
+  double m_sp = 0.5, n_sp = 1;
+  // compute fluvial erosion
+  /* Note: ordered_nodes is probably not needed here
+  for (std::vector<node_coord>::iterator iter = ordered_nodes.begin(); iter != ordered_nodes.end(); iter++){
+    int i = *iter.i, j = *iter.j;
+    m_topg(i, j) = m_topg(i, j) - k_sp * pow(drainage_area[i][j], m_sp) * pow(steepest_slope[i][j], n_sp) * dt / 31557600.0;
+  }
+  */
+  ParallelSection loop(m_grid->com);
+  try {
+    for (Points p(*m_grid); p; p.next()) {
+      const int i = p.i(), j = p.j();
+      if (mask.ice_free_land(i, j)) {
+        m_topg(i, j) = m_topg(i, j) - k_sp * pow(drainage_area[i][j], m_sp) * pow(steepest_slope[i][j], n_sp) * dt / 31557600.0;
+      }
+    }
+  } catch (...) {
+    loop.failed();
+  }
+  loop.check();
+
+  m_topg.inc_state_counter();
+}
+
+void LandEvo::fluvial_route_flow(
+    const IceModelVec2S &bed_elevation,
+    const IceModelVec2S &ice_thickness,
+    std::vector<std::vector<double>> &drainage_area,
+    std::vector<std::vector<double>> &steepest_slope) {
+
+  int i_inc[8] = {1, -1, 0, 0, 1, -1, 1, -1};
+  int j_inc[8] = {0, 0, 1, -1, 1, -1, -1, 1};
+  double dist[8];
+
+  
+
+  for (int k = 0; k < 8; k++) {
+    dist[k] = sqrt(pow(i_inc[k] * m_grid->dx(), 2) + pow(j_inc[k] * m_grid->dy(), 2));
+  }
+
+  std::vector<std::vector<node_coord>> receiver(m_grid->Mx(), std::vector<node_coord>(m_grid->My()));
+  //TODO: use std::vector instead of array
+  bool is_head[m_grid->Mx()][m_grid->My()];
+
+  for (int i = 0; i < m_grid->Mx(); i++) {
+    for (int j = 0; j < m_grid->My(); j++) {
+      is_head[i][j] = true;
+    }
+  }
+
+  IceModelVec::AccessList list{&bed_elevation, &ice_thickness};
+  
+  // find steepset_slope and steepest_dir
+  ParallelSection loop(m_grid->com);
+  try {
+    for (Points p(*m_grid); p; p.next()) {
+      const int i = p.i(), j = p.j();
+      steepest_slope[i][j] = 0;
+      receiver[i][j].i = i;
+      receiver[i][j].j = j;
+      for (int k = 0; k < 8; k++) {
+        if (i+i_inc[k] < 0 || i+i_inc[k] >= m_grid->Mx() || j+j_inc[k] < 0 || j+j_inc[k]>=m_grid->My()) {
+          continue;
+        }
+        double tmp_slope = (bed_elevation(i, j) + ice_thickness(i, j) - (bed_elevation(i+i_inc[k], j+j_inc[k]) + ice_thickness(i+i_inc[k], j+j_inc[k]))) / dist[k];
+        if (tmp_slope > steepest_slope[i][j]) {
+          steepest_slope[i][j] = tmp_slope;
+          receiver[i][j].i = i+i_inc[k];
+          receiver[i][j].j = j+j_inc[k];
+        }
+        is_head[receiver[i][j].i][receiver[i][j].j] = false;
+      }
+    }
+  } catch (...) {
+    loop.failed();
+  }
+  loop.check();
+
+  // consturct ordered_node list
+  // downstream at the beginning, upstream at the end
+
+  std::vector<node_coord> ordered_nodes;
+  std::vector<std::vector<bool>> in_list(m_grid->Mx(), std::vector<bool>(m_grid->My()));
+
+  for (int i = 0; i < m_grid->Mx(); i++) {
+    for (int j = 0; j < m_grid->My(); j++) {
+      in_list[i][j] = false;
+    }
+  }
+
+  for (Points p(*m_grid); p; p.next()) {
+    const int i = p.i(), j = p.j();
+    if (is_head[i][j]) {
+      add_to_stack(i, j, receiver, ordered_nodes, in_list);
+    }
+  }
+
+  // accumulate flow
+  for (int i = 0; i < m_grid->Mx(); i++) {
+    for (int j = 0; j < m_grid->My(); j++) {
+      drainage_area[i][j] = m_grid->dx() * m_grid->dy();
+    }
+  }
+  for (std::vector<node_coord>::reverse_iterator iter = ordered_nodes.rbegin(); iter != ordered_nodes.rend(); iter++) {
+    double i = iter->i, j = iter->j;
+    if (receiver[i][j].i != i || receiver[i][j].j != j) {
+      drainage_area[receiver[i][j].i][receiver[i][j].j] += drainage_area[i][j];
+    }
+  }
+
+}
+
+void add_to_stack(int i, int j, const std::vector<std::vector<node_coord>> &receiver,
+    std::vector<node_coord> &ordered_nodes, std::vector<std::vector<bool>> &in_list) {
+
+  if (in_list[i][j]) {
+    return;
+  }
+  if (receiver[i][j].i != i || receiver[i][j].j != j) {
+    add_to_stack(receiver[i][j].i, receiver[i][j].j, receiver, ordered_nodes, in_list);
+  }
+  node_coord this_point;
+  this_point.i = i;
+  this_point.j = j;
+  ordered_nodes.push_back(this_point);
+  in_list[i][j] = true;
+}
+
 
 
 } // end of namespace bed

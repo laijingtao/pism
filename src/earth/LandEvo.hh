@@ -21,7 +21,7 @@ public:
     double dt);
 
 protected:
-  bool do_erosion = false, do_prescribed_uplift = false;
+  bool do_erosion = false, do_prescribed_uplift = false, do_fluvial = false;
   IceModelVec2S m_prescribed_uplift;
 
   void init_impl(const InputOptions &opts, const IceModelVec2S &ice_thickness,
@@ -40,7 +40,26 @@ protected:
                                  const IceModelVec2S &bed_elevation,
                                  const IceModelVec2S &ice_thickness,
                                  IceModelVec2S &results);
+  void update_fluvial_erosion(
+    const IceModelVec2S &ice_thickness,
+    const IceModelVec2CellType &mask,
+    double dt);
+  void fluvial_route_flow(
+    const IceModelVec2S &bed_elevation,
+    const IceModelVec2S &ice_thickness,
+    std::vector<std::vector<double>> &drainage_area,
+    std::vector<std::vector<double>> &steepest_slope);
 };
+
+struct node_coord {
+  int i, j;
+};
+
+
+void add_to_stack(int i, int j,
+    const std::vector<std::vector<node_coord>> &receiver,
+    std::vector<node_coord> &ordered_nodes,
+    std::vector<std::vector<bool>> &in_list);
 
 }
 }
