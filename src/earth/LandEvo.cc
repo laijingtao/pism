@@ -305,6 +305,8 @@ void LandEvo::update_fluvial_erosion(
   try {
     for (Points p(*m_grid); p; p.next()) {
       const int i = p.i(), j = p.j();
+      //m_log->message(2, "slope %f", steepest_slope[i][j]);
+      //m_log->message(2, "drainage %f", drainage_area[i][j]);
       if (mask.ice_free_land(i, j)) {
         m_topg(i, j) = m_topg(i, j) - k_sp * pow(drainage_area[i][j], m_sp) * pow(steepest_slope[i][j], n_sp) * dt / 31557600.0;
       }
@@ -334,18 +336,11 @@ void LandEvo::fluvial_route_flow(
   }
 
   std::vector<std::vector<node_coord>> receiver(m_grid->Mx(), std::vector<node_coord>(m_grid->My()));
-  //TODO: use std::vector instead of array
-  bool is_head[m_grid->Mx()][m_grid->My()];
-
-  for (int i = 0; i < m_grid->Mx(); i++) {
-    for (int j = 0; j < m_grid->My(); j++) {
-      is_head[i][j] = true;
-    }
-  }
 
   IceModelVec::AccessList list{&bed_elevation, &ice_thickness};
   
   // find steepset_slope and steepest_dir
+  /*
   ParallelSection loop(m_grid->com);
   try {
     for (Points p(*m_grid); p; p.next()) {
@@ -363,16 +358,48 @@ void LandEvo::fluvial_route_flow(
           receiver[i][j].i = i+i_inc[k];
           receiver[i][j].j = j+j_inc[k];
         }
-        is_head[receiver[i][j].i][receiver[i][j].j] = false;
       }
     }
   } catch (...) {
     loop.failed();
   }
   loop.check();
+  */
+ for (Points p(*m_grid); p; p.next()) {
+    const int i = p.i(), j = p.j();
+    steepest_slope[i][j] = 0;
+    receiver[i][j].i = i;
+    receiver[i][j].j = j;
+    for (int k = 0; k < 8; k++) {
+      if (i+i_inc[k] < 0 || i+i_inc[k] >= m_grid->Mx() || j+j_inc[k] < 0 || j+j_inc[k]>=m_grid->My()) {
+        continue;
+      }
+      double tmp_slope = (bed_elevation(i, j) + ice_thickness(i, j) - (bed_elevation(i+i_inc[k], j+j_inc[k]) + ice_thickness(i+i_inc[k], j+j_inc[k]))) / dist[k];
+      if (tmp_slope > steepest_slope[i][j]) {
+        steepest_slope[i][j] = tmp_slope;
+        receiver[i][j].i = i+i_inc[k];
+        receiver[i][j].j = j+j_inc[k];
+      }
+    }
+  }
+
 
   // consturct ordered_node list
   // downstream at the beginning, upstream at the end
+
+  bool is_head[m_grid->Mx()][m_grid->My()];
+
+  for (int i = 0; i < m_grid->Mx(); i++) {
+    for (int j = 0; j < m_grid->My(); j++) {
+      is_head[i][j]] = true;
+    }
+  }
+
+  for (int i = 0; i < m_grid->Mx(); i++) {
+    for (int j = 0; j < m_grid->My(); j++) {
+      is_head[receiver[i][j].i][receiver[i][j].j] = false;
+    }
+  }
 
   std::vector<node_coord> ordered_nodes;
   std::vector<std::vector<bool>> in_list(m_grid->Mx(), std::vector<bool>(m_grid->My()));
