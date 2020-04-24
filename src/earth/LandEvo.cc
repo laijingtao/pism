@@ -391,7 +391,7 @@ void LandEvo::fluvial_route_flow(
 
   for (int i = 0; i < m_grid->Mx(); i++) {
     for (int j = 0; j < m_grid->My(); j++) {
-      is_head[i][j]] = true;
+      is_head[i][j] = true;
     }
   }
 
