@@ -1,13 +1,19 @@
 #ifndef __LandEvo_hh
 #define __LandEvo_hh
 
+#include <petscvec.h>
 
 #include "BedDef.hh"
 #include "pism/util/iceModelVec.hh"
 #include "pism/util/IceModelVec2CellType.hh"
+#include "pism/util/petscwrappers/Vec.hh"
 
 namespace pism {
 namespace bed {
+
+struct node_coord {
+  int i, j;
+};
 
 class LandEvo : public BedDef {
 public:
@@ -44,15 +50,7 @@ protected:
     const IceModelVec2S &ice_thickness,
     const IceModelVec2CellType &mask,
     double dt);
-  void fluvial_route_flow(
-    const IceModelVec2S &bed_elevation,
-    const IceModelVec2S &ice_thickness,
-    std::vector<std::vector<double>> &drainage_area,
-    std::vector<std::vector<double>> &steepest_slope);
-};
-
-struct node_coord {
-  int i, j;
+  void fluvial_route_flow_proc0(Vec bed_elevation, Vec ice_thickness, Vec drainage_area, Vec steepest_slope);
 };
 
 

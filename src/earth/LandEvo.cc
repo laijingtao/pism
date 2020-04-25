@@ -284,31 +284,45 @@ void LandEvo::update_fluvial_erosion(
     const IceModelVec2CellType &mask,
     double dt) {
 
-  std::vector<std::vector<double>> steepest_slope(m_grid->Mx(), std::vector<double>(m_grid->My()));
-  std::vector<std::vector<double>> drainage_area(m_grid->Mx(), std::vector<double>(m_grid->My()));
+  IceModelVec2S drainage_area, steepest_slope;
+  drainage_area.create(m_grid, "", WITHOUT_GHOSTS);
+  steepest_slope.create(m_grid, "", WITHOUT_GHOSTS);
   
+  petsc::Vec::Ptr bed_elevation0 = m_topg.allocate_proc0_copy();
+  petsc::Vec::Ptr ice_thickness0 = ice_thickness.allocate_proc0_copy();
+  petsc::Vec::Ptr drainage_area0 = drainage_area.allocate_proc0_copy();
+  petsc::Vec::Ptr steepest_slope0 = steepest_slope.allocate_proc0_copy();
+  
+  m_topg.put_on_proc0(*bed_elevation0);
+  ice_thickness.put_on_proc0(*ice_thickness0);
+  drainage_area.put_on_proc0(*drainage_area0);
+  steepest_slope.put_on_proc0(*steepest_slope0);
 
-  this->fluvial_route_flow(m_topg, ice_thickness, drainage_area, steepest_slope);
+  ParallelSection rank0(m_grid->com);
+  try {
+    // flow accumulation should use only 1 processor
+    if (m_grid->rank() == 0) {
+      this->fluvial_route_flow_proc0(*bed_elevation0, *ice_thickness0, *drainage_area0, *steepest_slope0);
+    }
+  } catch (...) {
+    rank0.failed();
+  }
+  rank0.check();
+
+  drainage_area.get_from_proc0(*drainage_area0);
+  steepest_slope.get_from_proc0(*steepest_slope0);
   
-  IceModelVec::AccessList list{&m_topg, &mask};
+  IceModelVec::AccessList list{&m_topg, &mask, &drainage_area, &steepest_slope};
 
   double k_sp = m_config->get_double("bed_deformation.fluvial_erosion.stream_power_k");
   double m_sp = 0.5, n_sp = 1;
-  // compute fluvial erosion
-  /* Note: ordered_nodes is probably not needed here
-  for (std::vector<node_coord>::iterator iter = ordered_nodes.begin(); iter != ordered_nodes.end(); iter++){
-    int i = *iter.i, j = *iter.j;
-    m_topg(i, j) = m_topg(i, j) - k_sp * pow(drainage_area[i][j], m_sp) * pow(steepest_slope[i][j], n_sp) * dt / 31557600.0;
-  }
-  */
+
   ParallelSection loop(m_grid->com);
   try {
     for (Points p(*m_grid); p; p.next()) {
       const int i = p.i(), j = p.j();
-      //m_log->message(2, "slope %f", steepest_slope[i][j]);
-      //m_log->message(2, "drainage %f", drainage_area[i][j]);
       if (mask.ice_free_land(i, j)) {
-        m_topg(i, j) = m_topg(i, j) - k_sp * pow(drainage_area[i][j], m_sp) * pow(steepest_slope[i][j], n_sp) * dt / 31557600.0;
+        m_topg(i, j) = m_topg(i, j) - k_sp * pow(drainage_area(i, j), m_sp) * pow(steepest_slope(i, j), n_sp) * dt / 31557600.0;
       }
     }
   } catch (...) {
@@ -319,90 +333,60 @@ void LandEvo::update_fluvial_erosion(
   m_topg.inc_state_counter();
 }
 
-void LandEvo::fluvial_route_flow(
-    const IceModelVec2S &bed_elevation,
-    const IceModelVec2S &ice_thickness,
-    std::vector<std::vector<double>> &drainage_area,
-    std::vector<std::vector<double>> &steepest_slope) {
+void LandEvo::fluvial_route_flow_proc0(Vec bed_elevation, Vec ice_thickness, Vec drainage_area, Vec steepest_slope) {
+
+  petsc::VecArray2D topg(bed_elevation, m_grid->Mx(), m_grid->My());
+  petsc::VecArray2D thk(ice_thickness, m_grid->Mx(), m_grid->My());
+  petsc::VecArray2D A(drainage_area, m_grid->Mx(), m_grid->My());
+  petsc::VecArray2D S(steepest_slope, m_grid->Mx(), m_grid->My());
+
+  std::vector<std::vector<node_coord>> receiver(m_grid->Mx(), std::vector<node_coord>(m_grid->My()));
 
   int i_inc[8] = {1, -1, 0, 0, 1, -1, 1, -1};
   int j_inc[8] = {0, 0, 1, -1, 1, -1, -1, 1};
   double dist[8];
 
-  
-
   for (int k = 0; k < 8; k++) {
     dist[k] = sqrt(pow(i_inc[k] * m_grid->dx(), 2) + pow(j_inc[k] * m_grid->dy(), 2));
   }
 
-  std::vector<std::vector<node_coord>> receiver(m_grid->Mx(), std::vector<node_coord>(m_grid->My()));
-
-  IceModelVec::AccessList list{&bed_elevation, &ice_thickness};
-  
-  // find steepset_slope and steepest_dir
-  /*
-  ParallelSection loop(m_grid->com);
-  try {
-    for (Points p(*m_grid); p; p.next()) {
-      const int i = p.i(), j = p.j();
-      steepest_slope[i][j] = 0;
+  // find steepest slope and receiver
+  for (int i = 0; i < m_grid->Mx(); i++) {
+    for (int j = 0; j < m_grid->My(); j++) {
+      S(i, j) = 0;
       receiver[i][j].i = i;
       receiver[i][j].j = j;
       for (int k = 0; k < 8; k++) {
         if (i+i_inc[k] < 0 || i+i_inc[k] >= m_grid->Mx() || j+j_inc[k] < 0 || j+j_inc[k]>=m_grid->My()) {
           continue;
         }
-        double tmp_slope = (bed_elevation(i, j) + ice_thickness(i, j) - (bed_elevation(i+i_inc[k], j+j_inc[k]) + ice_thickness(i+i_inc[k], j+j_inc[k]))) / dist[k];
-        if (tmp_slope > steepest_slope[i][j]) {
-          steepest_slope[i][j] = tmp_slope;
-          receiver[i][j].i = i+i_inc[k];
-          receiver[i][j].j = j+j_inc[k];
+        double tmp_slope = (topg(i, j) + thk(i, j) - (topg(i+i_inc[k], j+j_inc[k]) + thk(i+i_inc[k], j+j_inc[k]))) / dist[k];
+        if (tmp_slope > S(i, j)) {
+          S(i, j) = tmp_slope;
+          receiver[i][j].i = i + i_inc[k];
+          receiver[i][j].j = j + j_inc[k];
         }
       }
     }
-  } catch (...) {
-    loop.failed();
   }
-  loop.check();
-  */
- for (Points p(*m_grid); p; p.next()) {
-    const int i = p.i(), j = p.j();
-    steepest_slope[i][j] = 0;
-    receiver[i][j].i = i;
-    receiver[i][j].j = j;
-    for (int k = 0; k < 8; k++) {
-      if (i+i_inc[k] < 0 || i+i_inc[k] >= m_grid->Mx() || j+j_inc[k] < 0 || j+j_inc[k]>=m_grid->My()) {
-        continue;
-      }
-      double tmp_slope = (bed_elevation(i, j) + ice_thickness(i, j) - (bed_elevation(i+i_inc[k], j+j_inc[k]) + ice_thickness(i+i_inc[k], j+j_inc[k]))) / dist[k];
-      if (tmp_slope > steepest_slope[i][j]) {
-        steepest_slope[i][j] = tmp_slope;
-        receiver[i][j].i = i+i_inc[k];
-        receiver[i][j].j = j+j_inc[k];
-      }
-    }
-  }
-
 
   // consturct ordered_node list
   // downstream at the beginning, upstream at the end
-
   bool is_head[m_grid->Mx()][m_grid->My()];
+  std::vector<node_coord> ordered_nodes;
+  std::vector<std::vector<bool>> in_list(m_grid->Mx(), std::vector<bool>(m_grid->My()));
 
   for (int i = 0; i < m_grid->Mx(); i++) {
     for (int j = 0; j < m_grid->My(); j++) {
       is_head[i][j] = true;
     }
   }
-
+  
   for (int i = 0; i < m_grid->Mx(); i++) {
     for (int j = 0; j < m_grid->My(); j++) {
       is_head[receiver[i][j].i][receiver[i][j].j] = false;
     }
   }
-
-  std::vector<node_coord> ordered_nodes;
-  std::vector<std::vector<bool>> in_list(m_grid->Mx(), std::vector<bool>(m_grid->My()));
 
   for (int i = 0; i < m_grid->Mx(); i++) {
     for (int j = 0; j < m_grid->My(); j++) {
@@ -410,23 +394,24 @@ void LandEvo::fluvial_route_flow(
     }
   }
 
-  for (Points p(*m_grid); p; p.next()) {
-    const int i = p.i(), j = p.j();
-    if (is_head[i][j]) {
-      add_to_stack(i, j, receiver, ordered_nodes, in_list);
+  for (int i = 0; i < m_grid->Mx(); i++) {
+    for (int j = 0; j < m_grid->My(); j++) {
+      if (is_head[i][j]) {
+        add_to_stack(i, j, receiver, ordered_nodes, in_list);
+      }
     }
   }
 
   // accumulate flow
   for (int i = 0; i < m_grid->Mx(); i++) {
     for (int j = 0; j < m_grid->My(); j++) {
-      drainage_area[i][j] = m_grid->dx() * m_grid->dy();
+      A(i, j) = m_grid->dx() * m_grid->dy();
     }
   }
-  for (std::vector<node_coord>::reverse_iterator iter = ordered_nodes.rbegin(); iter != ordered_nodes.rend(); iter++) {
-    double i = iter->i, j = iter->j;
+  for (int k = ordered_nodes.size() - 1; k > 0 ; k--) {
+    int i = ordered_nodes[k].i, j = ordered_nodes[k].j;
     if (receiver[i][j].i != i || receiver[i][j].j != j) {
-      drainage_area[receiver[i][j].i][receiver[i][j].j] += drainage_area[i][j];
+      A(receiver[i][j].i, receiver[i][j].j) += A(i, j);
     }
   }
 
@@ -447,7 +432,6 @@ void add_to_stack(int i, int j, const std::vector<std::vector<node_coord>> &rece
   ordered_nodes.push_back(this_point);
   in_list[i][j] = true;
 }
-
 
 
 } // end of namespace bed
