@@ -31,11 +31,19 @@ namespace bed {
 LandEvo::LandEvo(IceGrid::ConstPtr g)
   : BedDef(g) {
 
-  m_prescribed_uplift.create(m_grid, "prescribed_uplift", WITHOUT_GHOSTS);
+  m_prescribed_uplift.create(m_grid, "prescribed_uplift_rate", WITHOUT_GHOSTS);
   m_prescribed_uplift.set_attrs("model_state", "prescribed bedrock uplift rate",
-                           "m year-1", "prescribed_uplift_rate");
+                                "m year-1", "prescribed_uplift_rate");
 
-  do_erosion = m_config->get_boolean("bed_deformation.erosion.enabled");
+  m_accum_glacial_erosion.create(m_grid, "accum_glacial_erosion", WITHOUT_GHOSTS);
+  m_accum_glacial_erosion.set_attrs("model_state", "accumulated amount of glacial erosion",
+                                    "m", "accum_glacial_erosion");
+  
+  m_accum_fluvial_erosion.create(m_grid, "accum_fluvial_erosion", WITHOUT_GHOSTS);
+  m_accum_fluvial_erosion.set_attrs("model_state", "accumulated amount of fluvial erosion",
+                                    "m", "accum_fluvial_erosion");
+
+  do_glacial_erosion = m_config->get_boolean("bed_deformation.erosion.enabled");
   do_prescribed_uplift = m_config->get_boolean("bed_deformation.prescribed_uplift.enabled");
   do_fluvial = m_config->get_boolean("bed_deformation.fluvial_erosion.enabled");
 }
@@ -56,11 +64,11 @@ void LandEvo::init_impl(const InputOptions &opts, const IceModelVec2S &ice_thick
   m_log->message(2,
              "* Initializing the landscape evolution model (bed deformation model)...\n");
 
-  if (do_erosion) {
+  if (do_glacial_erosion) {
     m_log->message(2, "   - glacial erosion is enabled \n");
   }
 
-  if (do_erosion) {
+  if (do_fluvial) {
     m_log->message(2, "   - stream power erosion is enabled \n");
   }
 
@@ -83,6 +91,9 @@ void LandEvo::init_impl(const InputOptions &opts, const IceModelVec2S &ice_thick
                    prescribed_uplift_file.c_str());
     m_prescribed_uplift.regrid(prescribed_uplift_file, CRITICAL);
   }
+
+  m_accum_glacial_erosion.set(0.0);
+  m_accum_fluvial_erosion.set(0.0);
 }
 
 void LandEvo::update_impl(const IceModelVec2S &ice_thickness,
@@ -103,8 +114,8 @@ void LandEvo::update_lem(
     const IceModelVec2CellType &mask,
     double dt) {
 
-  if (do_erosion) {
-    this->update_erosion(ice_thickness, u3, v3, mask, dt);
+  if (do_glacial_erosion) {
+    this->update_glacial_erosion(ice_thickness, u3, v3, mask, dt);
   }
 
   if (do_fluvial) {
@@ -116,7 +127,7 @@ void LandEvo::update_lem(
   }
 }
 
-void LandEvo::update_erosion(
+void LandEvo::update_glacial_erosion(
     const IceModelVec2S &ice_thickness,
     const IceModelVec3 &u3,
     const IceModelVec3 &v3,
@@ -140,9 +151,9 @@ void LandEvo::update_erosion(
   std::string stabilizing_method = m_config->get_string("bed_deformation.erosion.stabilizing");
   IceModelVec2S erosion_threshold;
   erosion_threshold.create(m_grid, "", WITHOUT_GHOSTS);
-  this->compute_erosion_threshold(stabilizing_method, m_topg, ice_thickness, erosion_threshold);
+  this->compute_glacial_erosion_threshold(stabilizing_method, m_topg, ice_thickness, erosion_threshold);
 
-  IceModelVec::AccessList list{&m_topg, &sliding_mag, &mask, &erosion_threshold};
+  IceModelVec::AccessList list{&m_topg, &sliding_mag, &mask, &erosion_threshold, &m_accum_glacial_erosion};
 
   // compute erosion
   // unit of dt is second, unit of sliding_mag is m/sec
@@ -153,16 +164,21 @@ void LandEvo::update_erosion(
       const int i = p.i(), j = p.j();
       if (mask.grounded_ice(i, j)) {
         double erosion_amount;
+        double tmp_old_topg = m_topg(i, j);
+        
         if (l == 1.0) {
           erosion_amount = dt / 31557600.0 * (k_g * sliding_mag(i, j) * 31557600.0);
         } else {
           erosion_amount = dt / 31557600.0 * (k_g * pow(sliding_mag(i, j) * 31557600.0, l));
         }
+        
         if (erosion_amount < erosion_threshold(i, j)) {
           m_topg(i, j) = m_topg(i, j) - erosion_amount;
         } else {
           m_topg(i, j) = m_topg(i, j) - erosion_threshold(i, j);
         }
+        
+        m_accum_glacial_erosion(i, j) += tmp_old_topg - m_topg(i, j);
       }
     }
   } catch (...) {
@@ -190,7 +206,7 @@ void LandEvo::update_prescribed_uplift(double dt) {
   m_topg.inc_state_counter();
 }
 
-void LandEvo::compute_erosion_threshold(
+void LandEvo::compute_glacial_erosion_threshold(
     const std::string &stabilizing_method,
     const IceModelVec2S &bed_elevation,
     const IceModelVec2S &ice_thickness,
@@ -222,6 +238,10 @@ void LandEvo::compute_erosion_threshold(
           if (tmp_result < results(i, j)) {
             results(i, j) = tmp_result;
           }
+        }
+        if (results(i, j) < 0) {
+          // threshold cannot be negative
+          results(i, j) = 0;
         }
       }
     } catch (...) {
@@ -312,7 +332,7 @@ void LandEvo::update_fluvial_erosion(
   drainage_area.get_from_proc0(*drainage_area0);
   steepest_slope.get_from_proc0(*steepest_slope0);
   
-  IceModelVec::AccessList list{&m_topg, &mask, &drainage_area, &steepest_slope};
+  IceModelVec::AccessList list{&m_topg, &mask, &drainage_area, &steepest_slope, &m_accum_fluvial_erosion};
 
   double k_sp = m_config->get_double("bed_deformation.fluvial_erosion.stream_power_k");
   double m_sp = 0.5, n_sp = 1;
@@ -322,7 +342,9 @@ void LandEvo::update_fluvial_erosion(
     for (Points p(*m_grid); p; p.next()) {
       const int i = p.i(), j = p.j();
       if (mask.ice_free_land(i, j)) {
-        m_topg(i, j) = m_topg(i, j) - k_sp * pow(drainage_area(i, j), m_sp) * pow(steepest_slope(i, j), n_sp) * dt / 31557600.0;
+        double erosion_amount = k_sp * pow(drainage_area(i, j), m_sp) * pow(steepest_slope(i, j), n_sp) * dt / 31557600.0;
+        m_topg(i, j) = m_topg(i, j) - erosion_amount;
+        m_accum_fluvial_erosion(i, j) += erosion_amount;
       }
     }
   } catch (...) {
@@ -433,6 +455,25 @@ void add_to_stack(int i, int j, const std::vector<std::vector<node_coord>> &rece
   in_list[i][j] = true;
 }
 
+void LandEvo::define_model_state_impl(const PIO &output) const {
+  BedDef::define_model_state_impl(output);
+  m_accum_glacial_erosion.define(output);
+  m_accum_fluvial_erosion.define(output);
+}
+
+void LandEvo::write_model_state_impl(const PIO &output) const {
+  BedDef::write_model_state_impl(output);
+  m_accum_glacial_erosion.write(output);
+  m_accum_fluvial_erosion.write(output);
+}
+
+DiagnosticList LandEvo::diagnostics_impl() const {
+  DiagnosticList result = {
+    {"accum_glacial_erosion", Diagnostic::wrap(m_accum_glacial_erosion)},
+    {"accum_fluvial_erosion", Diagnostic::wrap(m_accum_fluvial_erosion)},
+  };
+  return combine(result, BedDef::diagnostics_impl());
+}
 
 } // end of namespace bed
 } // end of namespace pism
